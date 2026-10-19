@@ -41,6 +41,20 @@ class SecurityConfigTest {
     }
 
     /**
+     * 验证健康检查绕过 actuator Basic Auth，而其他 actuator 路径仍拒绝匿名访问。
+     */
+    @Test
+    @DisplayName("仅允许匿名访问健康检查端点")
+    void shouldOnlyAllowAnonymousHealthEndpoint() {
+        SecurityConfig config = new SecurityConfig(new SecurityProperties());
+        var filter = config.getSaServletFilter();
+
+        assertEquals(java.util.List.of("/actuator/health"), filter.excludeList);
+        assertTrue(filter.includeList.contains("/actuator/**"));
+        assertFalse(filter.excludeList.contains("/actuator/info"));
+    }
+
+    /**
      * 验证控制器路径中的变量会归一化为通配符，并去重保存为统一鉴权 URL 列表。
      */
     @Test

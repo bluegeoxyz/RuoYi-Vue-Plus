@@ -53,3 +53,9 @@ nbdist/
 
 application-local.yml
 application-ga.yml
+
+# Local database backups may contain development PII and credentials.
+/backups/
+
+# Local Docker deployment secrets.
+/script/docker/.env

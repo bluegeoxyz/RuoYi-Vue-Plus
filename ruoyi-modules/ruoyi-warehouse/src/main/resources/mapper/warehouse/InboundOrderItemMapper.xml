@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.warehouse.inbound.mapper.InboundOrderItemMapper">
+    <select id="selectItems" resultType="org.dromara.warehouse.inbound.domain.vo.InboundOrderItemVo">
+        SELECT i.id, i.material_id, m.material_code, m.material_name, m.specification,
+               i.location_id, z.zone_name, l.location_code, l.location_name, i.quantity,
+               i.unit_id, u.unit_name, u.precision_scale, i.remark
+        FROM wm_inbound_order_item i
+        LEFT JOIN wm_material m ON m.id = i.material_id
+        LEFT JOIN wm_warehouse_location l ON l.id = i.location_id
+        LEFT JOIN wm_warehouse_zone z ON z.id = l.zone_id
+        LEFT JOIN wm_unit u ON u.id = i.unit_id
+        WHERE i.inbound_order_id = #{orderId}
+        ORDER BY i.id
+    </select>
+</mapper>

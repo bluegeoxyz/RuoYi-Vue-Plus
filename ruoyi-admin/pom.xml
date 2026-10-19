@@ -17,10 +17,26 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Mysql驱动包 -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
+        </dependency>
+
+        <!-- Flyway database version management for new V1 installations -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
         </dependency>
 
 <!--        &lt;!&ndash; mp支持的数据库均支持 只需要增加对应的jdbc依赖即可 &ndash;&gt;-->
@@ -63,10 +79,6 @@
         </dependency>
 
         <!-- mcp模块 -->
-        <dependency>
-            <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-common-mcp</artifactId>
-        </dependency>
 
         <!-- api模块 -->
         <dependency>
@@ -80,28 +92,22 @@
             <artifactId>ruoyi-system</artifactId>
         </dependency>
 
-        <!-- 调度任务模块 -->
+        <!-- HR业务模块 -->
         <dependency>
             <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-job</artifactId>
+            <artifactId>ruoyi-hr</artifactId>
         </dependency>
 
-        <!-- AI业务模块 -->
+        <!-- 物业业务模块 -->
         <dependency>
             <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-ai</artifactId>
+            <artifactId>ruoyi-property</artifactId>
         </dependency>
 
-        <!--  demo模块  -->
+        <!-- 仓库业务模块 -->
         <dependency>
             <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-demo</artifactId>
-        </dependency>
-
-        <!--  工作流模块  -->
-        <dependency>
-            <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-workflow</artifactId>
+            <artifactId>ruoyi-warehouse</artifactId>
         </dependency>
 
         <!-- Spring Boot Admin 客户端 -->
@@ -136,10 +142,6 @@
                     <artifactId>ruoyi-gen</artifactId>
                 </dependency>
             </dependencies>
-            <activation>
-                <!-- 默认激活 -->
-                <activeByDefault>true</activeByDefault>
-            </activation>
         </profile>
     </profiles>
 

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>org.dromara</groupId>
+        <artifactId>ruoyi-modules</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>ruoyi-warehouse</artifactId>
+
+    <description>
+        仓库管理业务模块
+    </description>
+
+    <dependencies>
+        <!-- 通过公共 API 访问物业项目参考数据，避免直接依赖 Property 模块 -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-api</artifactId>
+        </dependency>
+        <!-- 复用系统用户、部门及数据权限等平台能力 -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-system</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -89,8 +89,8 @@ public class PlusWebInvokeTimeInterceptor implements HandlerInterceptor {
             JsonUtils.removeFields(rootNode, SystemConstants.EXCLUDE_PROPERTIES);
             return rootNode.toString();
         } catch (Exception e) {
-            log.debug("[PLUS]请求参数 JSON 解析失败，跳过结构化脱敏: {}", e.getMessage());
-            return jsonParam;
+            log.debug("[PLUS]请求参数 JSON 解析失败，拒绝记录原始请求体: {}", e.getMessage());
+            return "[unavailable]";
         }
     }
 

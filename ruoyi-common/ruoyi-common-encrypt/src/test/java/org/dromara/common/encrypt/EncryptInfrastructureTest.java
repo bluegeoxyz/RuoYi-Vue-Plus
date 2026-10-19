@@ -9,16 +9,22 @@ import org.dromara.common.encrypt.core.EncryptorManager;
 import org.dromara.common.encrypt.core.IEncryptor;
 import org.dromara.common.encrypt.enums.AlgorithmType;
 import org.dromara.common.encrypt.enums.EncodeType;
+import org.dromara.common.encrypt.exception.FieldCryptoException;
 import org.dromara.common.encrypt.filter.DecryptRequestBodyWrapper;
 import org.dromara.common.encrypt.filter.EncryptResponseBodyWrapper;
+import org.dromara.common.encrypt.interceptor.MybatisEncryptInterceptor;
 import org.dromara.common.encrypt.properties.EncryptorProperties;
 import org.dromara.common.encrypt.utils.EncryptUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.apache.ibatis.executor.parameter.ParameterHandler;
+import org.apache.ibatis.plugin.Invocation;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +32,12 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DisplayName("common-encrypt 基础设施单元测试")
 class EncryptInfrastructureTest {
@@ -63,6 +74,68 @@ class EncryptInfrastructureTest {
         processor.decrypt(source);
         assertEquals("first", first.secret);
         assertEquals("second", second.secret);
+    }
+
+    @Test
+    @DisplayName("AES 加密失败时恢复批量参数并阻断写入")
+    void shouldFailClosedAndRestoreBatchParameters() {
+        EncryptorProperties properties = new EncryptorProperties();
+        properties.setAlgorithm(AlgorithmType.AES);
+        properties.setEncode(EncodeType.BASE64);
+        properties.setPassword("1234567890abcdef");
+        EncryptedFieldProcessor processor = new EncryptedFieldProcessor(
+            new FailingSecondEncryptorManager(), new EncryptContextFactory(properties));
+        DefaultSecretEntity first = new DefaultSecretEntity("first-secret");
+        DefaultSecretEntity second = new DefaultSecretEntity("second-secret");
+
+        FieldCryptoException exception = assertThrows(FieldCryptoException.class,
+            () -> processor.encrypt(List.of(first, second)));
+
+        assertEquals("字段加密失败，数据库操作已终止", exception.getMessage());
+        assertEquals("first-secret", first.secret);
+        assertEquals("second-secret", second.secret);
+    }
+
+    @Test
+    @DisplayName("损坏密文解密失败时拒绝返回")
+    void shouldRejectCorruptedCiphertext() {
+        EncryptorProperties properties = new EncryptorProperties();
+        properties.setAlgorithm(AlgorithmType.AES);
+        properties.setEncode(EncodeType.BASE64);
+        properties.setPassword("1234567890abcdef");
+        EncryptedFieldProcessor processor = new EncryptedFieldProcessor(
+            new EncryptorManager(""), new EncryptContextFactory(properties));
+        DefaultSecretEntity entity = new DefaultSecretEntity(Constants.ENCRYPT_HEADER + "not-valid-ciphertext");
+
+        FieldCryptoException exception = assertThrows(FieldCryptoException.class, () -> processor.decrypt(entity));
+
+        assertEquals("字段解密失败，查询结果已拒绝返回", exception.getMessage());
+        assertEquals(Constants.ENCRYPT_HEADER + "not-valid-ciphertext", entity.secret);
+    }
+
+    @Test
+    @DisplayName("MyBatis 写入异常后恢复参数对象明文状态")
+    void shouldRestoreParameterObjectWhenDatabaseWriteFails() throws Throwable {
+        EncryptorProperties properties = new EncryptorProperties();
+        properties.setAlgorithm(AlgorithmType.AES);
+        properties.setEncode(EncodeType.BASE64);
+        properties.setPassword("1234567890abcdef");
+        EncryptedFieldProcessor processor = new EncryptedFieldProcessor(
+            new EncryptorManager(""), new EncryptContextFactory(properties));
+        MybatisEncryptInterceptor interceptor = new MybatisEncryptInterceptor(processor);
+        DefaultSecretEntity entity = new DefaultSecretEntity("plain-before-write");
+        ParameterHandler handler = mock(ParameterHandler.class);
+        when(handler.getParameterObject()).thenReturn(entity);
+        doAnswer(invocation -> {
+            assertTrue(entity.secret.startsWith(Constants.ENCRYPT_HEADER));
+            throw new IllegalStateException("synthetic database failure");
+        }).when(handler).setParameters(any(PreparedStatement.class));
+        Invocation invocation = new Invocation(handler,
+            ParameterHandler.class.getMethod("setParameters", PreparedStatement.class),
+            new Object[]{mock(PreparedStatement.class)});
+
+        assertThrows(InvocationTargetException.class, () -> interceptor.intercept(invocation));
+        assertEquals("plain-before-write", entity.secret);
     }
 
     /**
@@ -138,6 +211,33 @@ class EncryptInfrastructureTest {
         assertEquals(headerName, response.getHeader("Access-Control-Expose-Headers"));
     }
 
+}
+
+class FailingSecondEncryptorManager extends EncryptorManager {
+
+    private int invocationCount;
+
+    FailingSecondEncryptorManager() {
+        super("");
+    }
+
+    @Override
+    public String encrypt(String value, EncryptContext encryptContext) {
+        if (++invocationCount == 2) {
+            throw new IllegalStateException("synthetic encryption failure");
+        }
+        return Constants.ENCRYPT_HEADER + value;
+    }
+}
+
+class DefaultSecretEntity {
+
+    @EncryptField
+    String secret;
+
+    DefaultSecretEntity(String secret) {
+        this.secret = secret;
+    }
 }
 
 class TestSecretEntity {

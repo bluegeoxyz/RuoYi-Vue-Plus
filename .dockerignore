@@ -1,0 +1,9 @@
+.git
+.idea
+.vscode
+**/target
+**/*.log
+backups
+docs
+script/docker/.env
+node_modules

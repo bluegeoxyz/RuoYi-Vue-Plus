@@ -42,6 +42,7 @@ import java.util.List;
 public class SecurityConfig implements WebMvcConfigurer {
 
     private static final String CLIENT_RULE_SEPARATOR_REGEX = "[,;\\r\\n]+";
+    private static final String HEALTH_ENDPOINT = "/actuator/health";
 
     private final SecurityProperties securityProperties;
 
@@ -92,7 +93,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     }
 
     /**
-     * 为 actuator 健康检查接口配置 Basic Auth 鉴权过滤器。
+     * 为 actuator 管理接口配置 Basic Auth 鉴权过滤器，健康检查仅暴露最小匿名端点。
      *
      * @return Sa-Token Servlet 过滤器
      */
@@ -102,6 +103,7 @@ public class SecurityConfig implements WebMvcConfigurer {
         String password = SpringUtils.getProperty("spring.boot.admin.client.password");
         return new SaServletFilter()
             .addInclude("/actuator", "/actuator/**")
+            .addExclude(HEALTH_ENDPOINT)
             .setAuth(obj -> {
                 SaHttpBasicUtil.check(username + StringUtils.COLON + password);
             })

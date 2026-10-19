@@ -28,6 +28,17 @@ import java.util.List;
 public interface SysUserMapper extends BaseMapperPlus<SysUser, SysUserVo>, MPJBaseMapper<SysUser> {
 
     /**
+     * 锁定一个有效用户，供跨模块的一对一关系变更串行化使用。
+     * 调用方必须先完成用户数据权限校验，并处于事务中。
+     */
+    default SysUserVo selectUserByIdForUpdate(Long userId) {
+        return lambda()
+            .eq(SysUser::getUserId, userId)
+            .last("FOR UPDATE")
+            .voOne();
+    }
+
+    /**
      * 分页查询用户列表，并进行数据权限控制
      *
      * @param page         分页参数

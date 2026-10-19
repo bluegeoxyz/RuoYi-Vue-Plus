@@ -1,0 +1,10 @@
+package org.dromara.property.charge.receivable.engine;
+import org.junit.jupiter.api.Test; import java.time.*; import static org.junit.jupiter.api.Assertions.*;
+class ChargePeriodCalculatorTest { private final ChargePeriodCalculator c=new ChargePeriodCalculator();
+ @Test void naturalMonthFirstAndNext(){assertPeriod("MONTH","NATURAL","2026-06-10",null,"2026-06","2026-06-10","2026-06-30");assertPeriod("MONTH","NATURAL","2026-06-10",null,"2026-07","2026-07-01","2026-07-31");}
+ @Test void naturalQuarterAndYearHaveTruncatedFirstCycle(){assertPeriod("QUARTER","NATURAL","2026-06-10",null,"2026-06","2026-06-10","2026-06-30");assertPeriod("QUARTER","NATURAL","2026-06-10",null,"2026-07","2026-07-01","2026-09-30");assertPeriod("YEAR","NATURAL","2026-06-10",null,"2026-06","2026-06-10","2026-12-31");assertPeriod("YEAR","NATURAL","2026-06-10",null,"2027-01","2027-01-01","2027-12-31");}
+ @Test void rollingMonthAndYear(){assertPeriod("MONTH","ROLLING","2026-06-10",null,"2026-06","2026-06-10","2026-07-09");assertPeriod("MONTH","ROLLING","2026-06-10",null,"2026-07","2026-07-10","2026-08-09");assertPeriod("YEAR","ROLLING","2025-05-28",null,"2026-05","2026-05-28","2027-05-27");}
+ @Test void originalMonthEndAnchorNeverDrifts(){assertPeriod("MONTH","ROLLING","2026-01-31",null,"2026-02","2026-02-28","2026-03-30");assertPeriod("MONTH","ROLLING","2026-01-31",null,"2026-03","2026-03-31","2026-04-29");assertPeriod("MONTH","ROLLING","2026-01-31",null,"2026-04","2026-04-30","2026-05-30");}
+ @Test void leapAnchorRecoversOnLeapYear(){assertPeriod("YEAR","ROLLING","2028-02-29",null,"2029-02","2029-02-28","2030-02-27");assertPeriod("YEAR","ROLLING","2028-02-29",null,"2032-02","2032-02-29","2033-02-27");}
+ private void assertPeriod(String cycle,String mode,String start,String end,String month,String expectedStart,String expectedEnd){ChargePeriod p=c.calculate(cycle,mode,LocalDate.parse(start),end==null?null:LocalDate.parse(end),YearMonth.parse(month)).orElseThrow();assertEquals(LocalDate.parse(expectedStart),p.actualStart());assertEquals(LocalDate.parse(expectedEnd),p.actualEnd());}
+}

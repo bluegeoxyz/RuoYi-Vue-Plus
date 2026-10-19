@@ -17,6 +17,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * 加解密配置
  *
@@ -24,7 +26,6 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration(after = MybatisPlusAutoConfiguration.class)
 @EnableConfigurationProperties(EncryptorProperties.class)
-@ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
 @Slf4j
 public class EncryptorAutoConfiguration {
 
@@ -38,6 +39,7 @@ public class EncryptorAutoConfiguration {
      * @return 字段加解密管理器
      */
     @Bean
+    @ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
     public EncryptorManager encryptorManager(MybatisPlusProperties mybatisPlusProperties) {
         validateEncryptorProperties(properties);
         return new EncryptorManager(mybatisPlusProperties.getTypeAliasesPackage());
@@ -49,6 +51,7 @@ public class EncryptorAutoConfiguration {
      * @return 加密上下文工厂
      */
     @Bean
+    @ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
     public EncryptContextFactory encryptContextFactory() {
         return new EncryptContextFactory(properties);
     }
@@ -61,6 +64,7 @@ public class EncryptorAutoConfiguration {
      * @return 加密字段处理器
      */
     @Bean
+    @ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
     public EncryptedFieldProcessor encryptedFieldProcessor(EncryptorManager encryptorManager, EncryptContextFactory encryptContextFactory) {
         return new EncryptedFieldProcessor(encryptorManager, encryptContextFactory);
     }
@@ -72,6 +76,7 @@ public class EncryptorAutoConfiguration {
      * @return MyBatis 入参加密拦截器
      */
     @Bean
+    @ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
     public MybatisEncryptInterceptor mybatisEncryptInterceptor(EncryptedFieldProcessor encryptedFieldProcessor) {
         return new MybatisEncryptInterceptor(encryptedFieldProcessor);
     }
@@ -83,6 +88,7 @@ public class EncryptorAutoConfiguration {
      * @return MyBatis 出参解密拦截器
      */
     @Bean
+    @ConditionalOnProperty(value = "mybatis-encryptor.enable", havingValue = "true")
     public MybatisDecryptInterceptor mybatisDecryptInterceptor(EncryptedFieldProcessor encryptedFieldProcessor) {
         return new MybatisDecryptInterceptor(encryptedFieldProcessor);
     }
@@ -97,6 +103,14 @@ public class EncryptorAutoConfiguration {
         if (algorithm == AlgorithmType.AES || algorithm == AlgorithmType.SM4) {
             if (StringUtils.isBlank(properties.getPassword())) {
                 throw new IllegalArgumentException("mybatis-encryptor.password 不能为空");
+            }
+        }
+        if (algorithm == AlgorithmType.AES) {
+            int characterLength = properties.getPassword().length();
+            int byteLength = properties.getPassword().getBytes(StandardCharsets.UTF_8).length;
+            if ((characterLength != 16 && characterLength != 24 && characterLength != 32)
+                || characterLength != byteLength) {
+                throw new IllegalArgumentException("mybatis-encryptor.password 必须是 16、24 或 32 字节的 ASCII AES 密钥");
             }
         }
         if (algorithm == AlgorithmType.RSA || algorithm == AlgorithmType.SM2) {

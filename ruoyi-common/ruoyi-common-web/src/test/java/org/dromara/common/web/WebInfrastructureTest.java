@@ -1,5 +1,7 @@
 package org.dromara.common.web;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import org.dromara.common.core.constant.HttpStatus;
@@ -15,6 +17,7 @@ import org.dromara.common.web.filter.XssHttpServletRequestWrapper;
 import org.dromara.common.web.handler.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.boot.json.JsonParseException;
@@ -202,8 +205,16 @@ class WebInfrastructureTest {
     @Test
     @DisplayName("隐藏未知异常并生成错误编号")
     void shouldHideUnexpectedFailureBehindTraceableErrorId() {
-        R<Void> result = new GlobalExceptionHandler().handleRuntimeException(
-            new RuntimeException("database password leaked"), request("GET", "/users", null));
+        Logger logger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
+        Level originalLevel = logger.getLevel();
+        R<Void> result;
+        try {
+            logger.setLevel(Level.OFF);
+            result = new GlobalExceptionHandler().handleRuntimeException(
+                new RuntimeException("database password leaked"), request("GET", "/users", null));
+        } finally {
+            logger.setLevel(originalLevel);
+        }
 
         assertEquals(HttpStatus.ERROR, result.getCode());
         assertTrue(result.getMsg().matches("发生未知异常，请联系管理员 \\[错误编号: \\d{8}]"));

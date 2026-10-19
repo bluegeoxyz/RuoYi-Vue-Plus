@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.warehouse.inbound.mapper.InboundOrderMapper">
+    <sql id="selectColumns">
+        SELECT o.id, o.inbound_no, o.company_id, d.dept_name company_name, o.project_id,
+               o.warehouse_id, w.warehouse_name, o.inbound_type, o.status, o.inbound_at,
+               o.completed_at, o.operator_id, u.nick_name operator_name, o.create_time, o.remark
+        FROM wm_inbound_order o
+        LEFT JOIN wm_warehouse w ON w.id = o.warehouse_id
+        LEFT JOIN sys_dept d ON d.dept_id = o.company_id
+        LEFT JOIN sys_user u ON u.user_id = o.operator_id
+    </sql>
+    <sql id="whereClause">
+        WHERE o.del_flag = '0' AND o.warehouse_id IN
+        <foreach collection="warehouseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        <if test="bo.inboundNo != null and bo.inboundNo != ''">AND o.inbound_no LIKE CONCAT('%', #{bo.inboundNo}, '%')</if>
+        <if test="bo.companyId != null">AND o.company_id = #{bo.companyId}</if>
+        <if test="bo.warehouseId != null">AND o.warehouse_id = #{bo.warehouseId}</if>
+        <if test="bo.status != null and bo.status != ''">AND o.status = #{bo.status}</if>
+        <if test="bo.inboundType != null and bo.inboundType != ''">AND o.inbound_type = #{bo.inboundType}</if>
+        <if test="bo.beginInboundAt != null">AND o.inbound_at &gt;= #{bo.beginInboundAt}</if>
+        <if test="bo.endInboundAt != null">AND o.inbound_at &lt;= #{bo.endInboundAt}</if>
+    </sql>
+    <select id="selectInboundPage" resultType="org.dromara.warehouse.inbound.domain.vo.InboundOrderVo"><include refid="selectColumns"/><include refid="whereClause"/> ORDER BY o.id DESC</select>
+    <select id="selectInboundList" resultType="org.dromara.warehouse.inbound.domain.vo.InboundOrderVo"><include refid="selectColumns"/><include refid="whereClause"/> ORDER BY o.id DESC</select>
+    <select id="selectInboundById" resultType="org.dromara.warehouse.inbound.domain.vo.InboundOrderVo"><include refid="selectColumns"/> WHERE o.id = #{id} AND o.del_flag = '0'</select>
+</mapper>

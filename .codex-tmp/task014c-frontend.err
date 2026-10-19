@@ -1,0 +1,16 @@
+11:55:50 [vite] http proxy error: /auth/code
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1194:18)
+    at afterConnectMultiple (node:net:1784:7)
+11:55:50 [vite] (client) [Unhandled rejection] AxiosError: Request failed with status code 502
+ > settle node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/settle.js:19:11
+ > XMLHttpRequest.onloadend node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/xhr.js:109:8
+
+11:55:50 [vite] http proxy error: /auth/code
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1194:18)
+    at afterConnectMultiple (node:net:1784:7)
+11:55:51 [vite] (client) [Unhandled rejection] AxiosError: Request failed with status code 502
+ > settle node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/settle.js:19:11
+ > XMLHttpRequest.onloadend node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/xhr.js:109:8
+

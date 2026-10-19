@@ -2,6 +2,7 @@ package org.dromara.system.listener;
 
 import cn.hutool.core.collection.CollUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.system.event.OnlineUserCleanEvent;
 import org.dromara.system.service.ISysRoleService;
 import org.springframework.scheduling.annotation.Async;
@@ -16,6 +17,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OnlineUserCleanListener {
 
     private final ISysRoleService roleService;
@@ -28,11 +30,17 @@ public class OnlineUserCleanListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void cleanOnlineUser(OnlineUserCleanEvent event) {
-        if (event.roleId() != null) {
-            roleService.cleanOnlineUserByRole(event.roleId());
-        }
-        if (CollUtil.isNotEmpty(event.userIds())) {
-            roleService.cleanOnlineUser(event.userIds());
+        try {
+            if (event.roleId() != null) {
+                roleService.cleanOnlineUserByRole(event.roleId());
+            }
+            if (CollUtil.isNotEmpty(event.userIds())) {
+                roleService.cleanOnlineUser(event.userIds());
+            }
+        } catch (Exception e) {
+            // Scope decisions always re-read the database; this is session hygiene, not the security boundary.
+            log.error("Authorization session cleanup failed after commit, roleId={}, userIds={}",
+                event.roleId(), event.userIds(), e);
         }
     }
 

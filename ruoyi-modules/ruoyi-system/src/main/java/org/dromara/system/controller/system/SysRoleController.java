@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.dromara.common.core.domain.PageResult;
 import org.dromara.common.core.domain.R;
-import org.dromara.common.core.utils.SpringUtils;
 import org.dromara.common.excel.utils.ExcelBuilder;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
@@ -19,10 +18,10 @@ import org.dromara.system.domain.bo.SysRoleBo;
 import org.dromara.system.domain.bo.SysUserBo;
 import org.dromara.system.domain.vo.SysRoleVo;
 import org.dromara.system.domain.vo.SysUserVo;
-import org.dromara.system.event.OnlineUserCleanEvent;
 import org.dromara.system.service.ISysDeptService;
 import org.dromara.system.service.ISysRoleService;
 import org.dromara.system.service.ISysUserService;
+import org.dromara.system.service.RoleDelegationGuard;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,6 +42,7 @@ public class SysRoleController extends BaseController {
     private final ISysRoleService roleService;
     private final ISysUserService userService;
     private final ISysDeptService deptService;
+    private final RoleDelegationGuard roleDelegationGuard;
 
     /**
      * 分页查询角色列表。
@@ -95,6 +95,7 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysRoleBo role) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(role, role.getMenuIds() != null);
         roleService.checkRoleAllowed(role);
         if (!roleService.checkRoleNameUnique(role)) {
             return R.fail("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
@@ -116,6 +117,7 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysRoleBo role) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(role, false);
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
         if (!roleService.checkRoleNameUnique(role)) {
@@ -125,7 +127,6 @@ public class SysRoleController extends BaseController {
         }
 
         if (roleService.updateRoleBaseInfo(role) > 0) {
-            SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
         return R.fail("修改角色'" + role.getRoleName() + "'失败，请联系管理员");
@@ -142,10 +143,10 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PutMapping("/permission")
     public R<Void> editPermission(@RequestBody SysRoleBo role) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(role, true);
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
         if (roleService.updateRolePermission(role) > 0) {
-            SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
         return R.fail("修改角色'" + role.getRoleName() + "'权限失败，请联系管理员");
@@ -165,7 +166,6 @@ public class SysRoleController extends BaseController {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
         if (roleService.updateRoleStatus(role.getRoleId(), role.getStatus()) > 0) {
-            SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(role.getRoleId()));
             return R.ok();
         }
         return R.fail("修改角色'" + role.getRoleName() + "'状态失败，请联系管理员");
@@ -233,6 +233,7 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PutMapping("/authUser/cancel")
     public R<Void> cancelAuthUser(@RequestBody SysUserRole userRole) {
+        roleDelegationGuard.assertCanDelegateRole(userRole.getRoleId());
         return toAjax(roleService.deleteAuthUser(userRole));
     }
 
@@ -248,6 +249,7 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PutMapping("/authUser/cancelAll")
     public R<Void> cancelAuthUserAll(Long roleId, Long[] userIds) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         return toAjax(roleService.deleteAuthUsers(roleId, List.of(userIds)));
     }
 
@@ -263,6 +265,7 @@ public class SysRoleController extends BaseController {
     @RepeatSubmit()
     @PutMapping("/authUser/selectAll")
     public R<Void> selectAuthUserAll(Long roleId, Long[] userIds) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         roleService.checkRoleDataScope(roleId);
         return toAjax(roleService.insertAuthUsers(roleId, List.of(userIds)));
     }

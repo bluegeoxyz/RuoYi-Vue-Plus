@@ -1,176 +1,78 @@
 services:
-  mysql:
-    image: mysql:8.4.9
-    container_name: mysql
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: zbm-platform-backend:${ZBM_IMAGE_TAG:-dev}
+    container_name: zbm-platform-backend
+    restart: unless-stopped
     environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-      # root 密码
-      MYSQL_ROOT_PASSWORD: root
-      # 初始化数据库(后续的初始化sql会在这个库执行)
-      MYSQL_DATABASE: ry-vue
-    ports:
-      - "3306:3306"
-    volumes:
-      # 数据挂载
-      - /docker/mysql/data/:/var/lib/mysql/
-      # 配置挂载
-      - /docker/mysql/conf/:/etc/mysql/conf.d/
-    command:
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_general_ci
-      --explicit_defaults_for_timestamp=true
-      --lower_case_table_names=1
-    privileged: true
-    network_mode: "host"
-
-  nginx-web:
-    image: nginx:1.31.1
-    container_name: nginx-web
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      # 证书映射
-      - /docker/nginx/cert:/etc/nginx/cert
-      # 配置文件映射
-      - /docker/nginx/conf/nginx.conf:/etc/nginx/nginx.conf
-      # 页面目录
-      - /docker/nginx/html:/usr/share/nginx/html
-      # 日志目录
-      - /docker/nginx/log:/var/log/nginx
-    privileged: true
-    network_mode: "host"
-
-  redis:
-    image: redis:8.6.3
-    container_name: redis
-    ports:
-      - "6379:6379"
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-    volumes:
-      # 配置文件
-      - /docker/redis/conf:/redis/config:rw
-      # 数据文件
-      - /docker/redis/data/:/redis/data/:rw
-    command: "redis-server /redis/config/redis.conf"
-    privileged: true
-    network_mode: "host"
-
-  minio:
-    # pgsty 开源社区 fork 重新维护的最新版 minio
-    image: pgsty/minio:RELEASE.2026-04-17T00-00-00Z
-    container_name: minio
-    ports:
-      # api 端口
-      - "9000:9000"
-      # 控制台端口
-      - "9001:9001"
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-      # 管理后台用户名
-      MINIO_ROOT_USER: ruoyi
-      # 管理后台密码，最小8个字符
-      MINIO_ROOT_PASSWORD: ruoyi123
-      # https需要指定域名
-      #MINIO_SERVER_URL: "https://xxx.com:9000"
-      #MINIO_BROWSER_REDIRECT_URL: "https://xxx.com:9001"
-      # 开启压缩 on 开启 off 关闭
-      MINIO_COMPRESS: "off"
-      # 扩展名 .pdf,.doc 为空 所有类型均压缩
-      MINIO_COMPRESS_EXTENSIONS: ""
-      # mime 类型 application/pdf 为空 所有类型均压缩
-      MINIO_COMPRESS_MIME_TYPES: ""
-    volumes:
-      # 映射当前目录下的data目录至容器内/data目录
-      - /docker/minio/data:/data
-      # 映射配置目录
-      - /docker/minio/config:/root/.minio/
-    command: server --address ':9000' --console-address ':9001' /data  # 指定容器中的目录 /data
-    privileged: true
-    network_mode: "host"
-
-  ruoyi-server1:
-    image: ruoyi/ruoyi-server:6.0.0
-    container_name: ruoyi-server1
-    environment:
-      # 时区上海
       TZ: Asia/Shanghai
       SERVER_PORT: 8080
-      SNAIL_JOB_PORT: 28080
-      SNAIL_AI_PORT: 38080
-    volumes:
-      # 配置文件
-      - /docker/server1/logs/:/ruoyi/server/logs/
-      # skywalking 探针
-#      - /docker/skywalking/agent/:/ruoyi/skywalking/agent
-    privileged: true
-    network_mode: "host"
-
-  ruoyi-server2:
-    image: ruoyi/ruoyi-server:6.0.0
-    container_name: ruoyi-server2
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-      SERVER_PORT: 8081
-      SNAIL_JOB_PORT: 28081
-      SNAIL_AI_PORT: 38081
-    volumes:
-      # 配置文件
-      - /docker/server2/logs/:/ruoyi/server/logs/
-      # skywalking 探针
-#      - /docker/skywalking/agent/:/ruoyi/skywalking/agent
-    privileged: true
-    network_mode: "host"
-
-  ruoyi-monitor-admin:
-    image: ruoyi/ruoyi-monitor-admin:6.0.0
-    container_name: ruoyi-monitor-admin
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-    volumes:
-      # 配置文件
-      - /docker/monitor/logs/:/ruoyi/monitor/logs
-    privileged: true
-    network_mode: "host"
-
-  ruoyi-snailjob-server:
-    image: ruoyi/ruoyi-snailjob-server:6.0.0
-    container_name: ruoyi-snailjob-server
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+HeapDumpOnOutOfMemoryError}
+      ZBM_DB_URL: jdbc:mysql://${ZBM_DB_HOST:-jdpm-mysql}:${ZBM_DB_PORT:-3306}/${ZBM_DB_NAME:-zbm_dev_v1}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+      ZBM_DB_USERNAME: ${ZBM_DB_USERNAME:?set ZBM_DB_USERNAME in .env}
+      ZBM_DB_PASSWORD: ${ZBM_DB_PASSWORD:?set ZBM_DB_PASSWORD in .env}
+      ZBM_REDIS_HOST: ${ZBM_REDIS_HOST:-jdpm-redis}
+      ZBM_REDIS_PORT: ${ZBM_REDIS_PORT:-6379}
+      ZBM_REDIS_DATABASE: ${ZBM_REDIS_DATABASE:-0}
+      ZBM_REDIS_PASSWORD: ${ZBM_REDIS_PASSWORD:?set ZBM_REDIS_PASSWORD in .env}
+      ZBM_FLYWAY_ENABLED: ${ZBM_FLYWAY_ENABLED:?set ZBM_FLYWAY_ENABLED in .env}
+      ZBM_MULTIPART_LOCATION: ${ZBM_MULTIPART_LOCATION:-/app/temp}
+      ZBM_PUBLIC_URL: ${ZBM_PUBLIC_URL:-}
+      ZBM_JWT_SECRET_KEY: ${ZBM_JWT_SECRET_KEY:?set ZBM_JWT_SECRET_KEY in .env}
+      ZBM_JUSTAUTH_MAXKEY_SERVER_URL: ${ZBM_JUSTAUTH_MAXKEY_SERVER_URL:-}
+      ZBM_JUSTAUTH_MAXKEY_CLIENT_ID: ${ZBM_JUSTAUTH_MAXKEY_CLIENT_ID:-}
+      ZBM_JUSTAUTH_MAXKEY_CLIENT_SECRET: ${ZBM_JUSTAUTH_MAXKEY_CLIENT_SECRET:-}
+      ZBM_JUSTAUTH_GITEE_CLIENT_ID: ${ZBM_JUSTAUTH_GITEE_CLIENT_ID:-}
+      ZBM_JUSTAUTH_GITEE_CLIENT_SECRET: ${ZBM_JUSTAUTH_GITEE_CLIENT_SECRET:-}
+      ZBM_CUSTOMER_SECURITY_ENABLED: ${ZBM_CUSTOMER_SECURITY_ENABLED:-false}
+      ZBM_FIELD_ENCRYPT_ENABLED: ${ZBM_FIELD_ENCRYPT_ENABLED:-false}
+      ZBM_CUSTOMER_FIELD_ENCRYPT_KEY: ${ZBM_CUSTOMER_FIELD_ENCRYPT_KEY:-}
+      ZBM_CUSTOMER_IDENTITY_HMAC_KEY: ${ZBM_CUSTOMER_IDENTITY_HMAC_KEY:-}
+      ZBM_CUSTOMER_PII_KEY_VERSION: ${ZBM_CUSTOMER_PII_KEY_VERSION:-}
     ports:
-      - "8800:8800"
-      - "17888:17888"
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     volumes:
-      - /docker/snailjob/logs/:/ruoyi/snailjob/logs
-    privileged: true
-    network_mode: "host"
+      - ${ZBM_BACKEND_DIR:-/opt/zbm/backend}/current/ruoyi-admin.jar:/app/ruoyi-admin.jar:ro
+      - backend-logs:/app/logs
+      - backend-temp:/app/temp
+    networks:
+      - zbm-external
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
 
-  ruoyi-snailai-server:
-    image: ruoyi/ruoyi-snailai-server:6.0.0
-    container_name: ruoyi-snailai-server
-    environment:
-      # 时区上海
-      TZ: Asia/Shanghai
-      # Docling 与 PaddleOCR 服务需单独部署；host 网络模式下默认通过宿主机端口访问
-      SNAIL_AI_RAG_DOCLING_ENABLED: ${SNAIL_AI_RAG_DOCLING_ENABLED:-true}
-      SNAIL_AI_RAG_DOCLING_URL: ${SNAIL_AI_RAG_DOCLING_URL:-http://127.0.0.1:5100}
-      SNAIL_AI_RAG_DOCLING_PADDLE_OCR_ENABLED: ${SNAIL_AI_RAG_DOCLING_PADDLE_OCR_ENABLED:-true}
-      SNAIL_AI_RAG_DOCLING_PADDLE_OCR_URL: ${SNAIL_AI_RAG_DOCLING_PADDLE_OCR_URL:-http://127.0.0.1:8866/ocr}
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: zbm-platform-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
     ports:
-      - "8900:8900"
-      - "18888:18888"
+      - "${FRONTEND_PORT:-8088}:80"
     volumes:
-      - /docker/snailai/logs/:/ruoyi/snailai/logs
-    privileged: true
-    network_mode: "host"
+      - ${ZBM_FRONTEND_DIR:-/opt/zbm/frontend}:/usr/share/nginx/zbm:ro
+      - ./nginx/conf/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - zbm-external
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+networks:
+  zbm-external:
+    external: true
+    name: ${DOCKER_EXTERNAL_NETWORK:-common-net}
+
+volumes:
+  backend-logs:
+  backend-temp:

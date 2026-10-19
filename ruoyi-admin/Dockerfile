@@ -1,32 +1,26 @@
-# 贝尔实验室 Spring 官方推荐镜像 JDK下载地址 https://bell-sw.com/pages/downloads/
-FROM bellsoft/liberica-openjdk-rocky:21.0.12-cds
-# FROM bellsoft/liberica-openjdk-rocky:25.0.4-cds
-# FROM findepi/graalvm:java21-native
+FROM eclipse-temurin:21-jre-alpine
 
-LABEL maintainer="Lion Li"
+LABEL org.opencontainers.image.title="zbm-platform" \
+      org.opencontainers.image.description="零界物业管理系统后端"
 
-RUN mkdir -p /ruoyi/server/logs \
-    /ruoyi/server/temp \
-    /ruoyi/skywalking/agent
+RUN addgroup -S zbm \
+    && adduser -S -G zbm -h /app zbm \
+    && mkdir -p /app/logs /app/temp \
+    && chown -R zbm:zbm /app
 
-WORKDIR /ruoyi/server
+WORKDIR /app
 
-ENV SERVER_PORT=8080 SNAIL_JOB_PORT=28080 SNAIL_AI_PORT=38080 LANG=C.UTF-8 LC_ALL=C.UTF-8 JAVA_OPTS=""
+ENV TZ=Asia/Shanghai \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SERVER_PORT=8080 \
+    SPRING_PROFILES_ACTIVE=prod \
+    JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+HeapDumpOnOutOfMemoryError"
 
-EXPOSE ${SERVER_PORT}
-# 暴露 snail 客户端端口 用于定时任务调度中心通信
-EXPOSE ${SNAIL_JOB_PORT}
-EXPOSE ${SNAIL_AI_PORT}
+USER zbm
+EXPOSE 8080
 
-ADD ./target/ruoyi-admin.jar ./app.jar
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+    CMD wget -q -O /dev/null "http://127.0.0.1:${SERVER_PORT}/actuator/health" || exit 1
 
-SHELL ["/bin/bash", "-c"]
-
-ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Dserver.port=${SERVER_PORT} \
-           -Dsnail-job.port=${SNAIL_JOB_PORT} \
-           -Dsnail-ai.port=${SNAIL_AI_PORT} \
-           # 应用名称 如果想区分集群节点监控 改成不同的名称即可
-           #-Dskywalking.agent.service_name=ruoyi-server \
-           #-javaagent:/ruoyi/skywalking/agent/skywalking-agent.jar \
-           -XX:+HeapDumpOnOutOfMemoryError -XX:+UseZGC ${JAVA_OPTS} \
-           -jar app.jar
+ENTRYPOINT ["sh", "-c", "test -r /app/ruoyi-admin.jar && exec java $JAVA_OPTS -Dserver.port=$SERVER_PORT -jar /app/ruoyi-admin.jar"]

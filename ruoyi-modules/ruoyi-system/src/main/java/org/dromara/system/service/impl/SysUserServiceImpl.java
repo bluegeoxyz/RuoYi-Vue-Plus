@@ -30,6 +30,7 @@ import org.dromara.system.domain.vo.SysUserExportVo;
 import org.dromara.system.domain.vo.SysUserVo;
 import org.dromara.system.mapper.*;
 import org.dromara.system.service.ISysUserService;
+import org.dromara.system.service.RoleDelegationGuard;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -53,6 +54,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     private final SysPostMapper postMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysUserPostMapper userPostMapper;
+    private final RoleDelegationGuard roleDelegationGuard;
 
     /**
      * 分页查询用户列表。
@@ -168,6 +170,11 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
         }
         user.setRoles(roleMapper.selectRolesByUserId(user.getUserId()));
         return user;
+    }
+
+    @Override
+    public SysUserVo selectUserByIdForUpdate(Long userId) {
+        return userMapper.selectUserByIdForUpdate(userId);
     }
 
     /**
@@ -299,6 +306,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertUser(SysUserBo user) {
+        roleDelegationGuard.assertCanDelegateRoles(user.getRoleIds() == null ? List.of() : List.of(user.getRoleIds()));
         SysUser sysUser = MapstructUtils.convert(user, SysUser.class);
         // 新增用户信息
         int rows = userMapper.insert(sysUser);
@@ -334,6 +342,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     @CacheEvict(cacheNames = CacheNames.SYS_NICKNAME, key = "#user.userId")
     @Transactional(rollbackFor = Exception.class)
     public int updateUser(SysUserBo user) {
+        roleDelegationGuard.assertCanDelegateRoles(user.getRoleIds() == null ? List.of() : List.of(user.getRoleIds()));
         // 新增用户与角色管理
         insertUserRole(user, true);
         // 新增用户与岗位管理
@@ -356,6 +365,7 @@ public class SysUserServiceImpl implements ISysUserService, UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void insertUserAuth(Long userId, Long[] roleIds) {
+        roleDelegationGuard.assertCanDelegateRoles(roleIds == null ? List.of() : List.of(roleIds));
         insertUserRole(userId, roleIds, true);
     }
 

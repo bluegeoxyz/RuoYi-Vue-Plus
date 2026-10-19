@@ -33,6 +33,7 @@ import org.dromara.system.mapper.SysRoleMapper;
 import org.dromara.system.mapper.SysRoleMenuMapper;
 import org.dromara.system.mapper.SysUserRoleMapper;
 import org.dromara.system.service.ISysRoleService;
+import org.dromara.system.service.RoleDelegationGuard;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     private final SysRoleMenuMapper roleMenuMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysRoleDeptMapper roleDeptMapper;
+    private final RoleDelegationGuard roleDelegationGuard;
 
     /**
      * 分页查询角色列表
@@ -300,6 +302,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertRole(SysRoleBo bo) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(bo, bo.getMenuIds() != null);
         SysRole role = MapstructUtils.convert(bo, SysRole.class);
         // 新增角色信息
         roleMapper.insert(role);
@@ -316,13 +319,16 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int updateRoleBaseInfo(SysRoleBo bo) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(bo, false);
         SysRole role = MapstructUtils.convert(bo, SysRole.class);
 
         if (SystemConstants.DISABLE.equals(role.getStatus()) && this.countUserRoleByRoleId(role.getRoleId()) > 0) {
             throw new ServiceException("角色已分配，不能禁用!");
         }
         // 仅更新角色基础字段，避免影响权限分配。
-        return roleMapper.updateById(role);
+        int result = roleMapper.updateById(role);
+        publishRoleChanged(role.getRoleId(), result);
+        return result;
     }
 
     /**
@@ -335,6 +341,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int updateRolePermission(SysRoleBo bo) {
+        roleDelegationGuard.assertCanChangeRoleDefinition(bo, true);
         SysRole role = MapstructUtils.convert(bo, SysRole.class);
         // 更新权限相关配置字段（数据范围、树联动）。
         roleMapper.updateById(role);
@@ -343,7 +350,9 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
         insertRoleMenu(bo);
         // 先清理旧数据权限，再按当前配置重建。
         roleDeptMapper.lambda().eq(SysRoleDept::getRoleId, role.getRoleId()).delete();
-        return insertRoleDept(bo);
+        int result = insertRoleDept(bo);
+        publishRoleChanged(role.getRoleId(), result);
+        return result;
     }
 
     /**
@@ -355,13 +364,22 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
      */
     @Override
     public int updateRoleStatus(Long roleId, String status) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         if (SystemConstants.DISABLE.equals(status) && this.countUserRoleByRoleId(roleId) > 0) {
             throw new ServiceException("角色已分配，不能禁用!");
         }
-        return roleMapper.lambda()
+        int result = roleMapper.lambda()
             .set(SysRole::getStatus, status)
             .eq(SysRole::getRoleId, roleId)
             .updateCount();
+        publishRoleChanged(roleId, result);
+        return result;
+    }
+
+    private void publishRoleChanged(Long roleId, int result) {
+        if (result > 0) {
+            SpringUtils.context().publishEvent(OnlineUserCleanEvent.byRole(roleId));
+        }
     }
 
 
@@ -417,6 +435,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int deleteRoleById(Long roleId) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         // 删除角色与菜单关联
         roleMenuMapper.lambda().eq(SysRoleMenu::getRoleId, roleId).delete();
         // 删除角色与部门关联
@@ -434,6 +453,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int deleteRoleByIds(Collection<Long> roleIds) {
+        roleDelegationGuard.assertCanDelegateRoles(roleIds);
         this.checkRoleDataScope(roleIds);
         List<SysRole> roles = roleMapper.selectByIds(roleIds);
         for (SysRole role : roles) {
@@ -457,6 +477,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
      */
     @Override
     public int deleteAuthUser(SysUserRole userRole) {
+        roleDelegationGuard.assertCanDelegateRole(userRole.getRoleId());
         if (LoginHelper.getUserId().equals(userRole.getUserId())) {
             throw new ServiceException("不允许修改当前用户角色!");
         }
@@ -479,6 +500,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
      */
     @Override
     public int deleteAuthUsers(Long roleId, Collection<Long> userIds) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         if (userIds.contains(LoginHelper.getUserId())) {
             throw new ServiceException("不允许修改当前用户角色!");
         }
@@ -501,6 +523,7 @@ public class SysRoleServiceImpl implements ISysRoleService, RoleService {
      */
     @Override
     public int insertAuthUsers(Long roleId, Collection<Long> userIds) {
+        roleDelegationGuard.assertCanDelegateRole(roleId);
         // 新增用户与角色管理
         int rows = 1;
         if (userIds.contains(LoginHelper.getUserId())) {

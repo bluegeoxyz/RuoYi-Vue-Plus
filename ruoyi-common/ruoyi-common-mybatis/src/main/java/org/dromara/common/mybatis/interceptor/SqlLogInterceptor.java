@@ -18,6 +18,7 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 import org.dromara.common.mybatis.config.properties.SqlLogProperties;
+import org.dromara.common.core.constant.SystemConstants;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Statement;
@@ -178,7 +179,10 @@ public class SqlLogInterceptor implements Interceptor {
      */
     private String buildFullSql(Configuration configuration, BoundSql boundSql) {
         String sql = boundSql.getSql().replaceAll(BLANK_REGEX, " ").trim();
-        List<String> parameters = buildParameterValues(configuration, boundSql);
+        // Customer 表包含姓名、联系方式、证件密文及审计元数据。Wrapper 参数名通常是
+        // MPGENVAL，无法从属性名判断敏感性，因此该表的所有文本参数统一脱敏。
+        boolean customerSecuritySql = StrUtil.containsIgnoreCase(sql, "pm_customer");
+        List<String> parameters = buildParameterValues(configuration, boundSql, customerSecuritySql);
         return replacePlaceholders(sql, parameters);
     }
 
@@ -189,7 +193,8 @@ public class SqlLogInterceptor implements Interceptor {
      * @param boundSql      绑定 SQL
      * @return 参数值集合
      */
-    private List<String> buildParameterValues(Configuration configuration, BoundSql boundSql) {
+    private List<String> buildParameterValues(Configuration configuration, BoundSql boundSql,
+                                               boolean redactTextParameters) {
         List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
         List<String> parameters = new ArrayList<>(parameterMappings.size());
         Object parameterObject = boundSql.getParameterObject();
@@ -200,6 +205,10 @@ public class SqlLogInterceptor implements Interceptor {
                 continue;
             }
             String propertyName = parameterMapping.getProperty();
+            if (isSensitiveProperty(propertyName)) {
+                parameters.add("'***'");
+                continue;
+            }
             Object value;
             if (boundSql.hasAdditionalParameter(propertyName)) {
                 value = boundSql.getAdditionalParameter(propertyName);
@@ -212,9 +221,23 @@ public class SqlLogInterceptor implements Interceptor {
             } else {
                 value = null;
             }
-            parameters.add(formatParameter(value));
+            parameters.add(redactTextParameters && value instanceof CharSequence ? "'***'" : formatParameter(value));
         }
         return parameters;
+    }
+
+    /** 判断 MyBatis 参数路径的末级字段是否属于统一敏感字段集合。 */
+    private boolean isSensitiveProperty(String propertyName) {
+        if (StrUtil.isBlank(propertyName)) {
+            return false;
+        }
+        String leaf = propertyName.substring(propertyName.lastIndexOf('.') + 1);
+        for (String sensitive : SystemConstants.EXCLUDE_PROPERTIES) {
+            if (StrUtil.equalsIgnoreCase(leaf, sensitive)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

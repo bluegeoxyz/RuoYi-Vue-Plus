@@ -11,70 +11,6 @@ spring.boot.admin.client:
   username: @monitor.username@
   password: @monitor.password@
 
---- # snail-job 配置
-snail-job:
-  enabled: false
-  # 需要在 SnailJob 后台组管理创建对应名称的组,然后创建任务的时候选择对应的组,才能正确分派任务
-  group: "ruoyi_group"
-  # SnailJob 接入验证令牌 详见 script/sql/ry_job.sql `sj_group_config` 表
-  token: "SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT"
-  server:
-    host: 127.0.0.1
-    port: 17888
-  # 命名空间UUID 详见 script/sql/ry_job.sql `sj_namespace`表`unique_id`字段
-  namespace: ${spring.profiles.active}
-  # 随主应用端口漂移
-  port: 2${server.port}
-  # 客户端ip指定
-  host:
-
---- # snail-ai 配置
-snail-ai:
-  # 启用客户端模式
-  enabled: false
-  # ==================== Server 连接 ====================
-  # Server 端 gRPC 地址（即 snail-ai-starter 的 snail-ai.server.grpc-port）
-  server:
-    host: 127.0.0.1
-    port: 18888
-  # ==================== 客户端配置 ====================
-  # 本客户端 gRPC 端口（Server 通过此端口分发 Chat 请求）
-  # 应用 ID（在 Server「应用管理」页面创建后获取）
-  app-id: 1
-  # 认证令牌（在 Server「应用管理」页面创建时自动生成）
-  token: SAI_566a6bfbc26e4998b4841cc927d50c5d
-  port: 3${server.port}
-  # Skill 文件临时目录
-  skill-temp-dir: /tmp/snail-ai-agent/skills
-  # ==================== Chat 嵌入模式配置 ====================
-  chat.ui.embed:
-    # 启用嵌入模式
-    enabled: true
-    # 嵌入模式下隐藏顶部栏
-    show-header: false
-    # 嵌入模式下隐藏侧边栏用户信息
-    show-sidebar-user: false
-    # 嵌入模式下隐藏智能体市场入口
-    show-agent-market: true
-    # 嵌入模式下使用紧凑输入框
-    compact-input: true
-    # 是否锁定当前智能体
-    lock-agent: false
-  # ==================== OpenAPI Client 配置 ====================
-  open-api:
-    # 启用 OpenAPI Client
-    enabled: true
-    # Server HTTP 端口
-    web-port: 8900
-    # 是否使用 HTTPS
-    https: false
-    # API 路径前缀
-    prefix: snail-ai
-    # 超时配置（毫秒）
-    connect-timeout-ms: 5000
-    read-timeout-ms: 60000
-    chat-timeout-ms: 300000
-
 --- # MyBatis Plus 配置
 mybatis-plus:
   sql-log:
@@ -85,6 +21,9 @@ mybatis-plus:
 
 --- # 数据源配置
 spring:
+  flyway:
+    # Development uses the V1-managed database by default. Override only for isolated tests.
+    enabled: ${ZBM_FLYWAY_ENABLED:true}
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     # 动态数据源文档 https://www.kancloud.cn/tracy5546/dynamic-datasource/content
@@ -100,9 +39,9 @@ spring:
           driverClassName: com.mysql.cj.jdbc.Driver
           # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
           # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: root
-          password: root
+          url: ${ZBM_DB_URL:jdbc:mysql://localhost:3306/zbm_dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true}
+          username: ${ZBM_DB_USERNAME:zbm_dev_v1}
+          password: ${ZBM_DB_PASSWORD:}
 #        # 从库数据源
 #        slave:
 #          lazy: true
@@ -149,13 +88,13 @@ spring:
 spring.data:
   redis:
     # 地址
-    host: localhost
+    host: ${ZBM_REDIS_HOST:localhost}
     # 端口，默认为6379
-    port: 6379
+    port: ${ZBM_REDIS_PORT:6379}
     # 数据库索引
-    database: 0
+    database: ${ZBM_REDIS_DATABASE:0}
     # redis 密码必须配置
-    password: ruoyi123
+    password: ${ZBM_REDIS_PASSWORD:root}
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl
@@ -321,3 +260,22 @@ justauth:
       client-id: 10**********6
       client-secret: 1f7d08**********5b7**********29e
       redirect-uri: ${justauth.address}/social-callback?source=gitea
+
+mybatis-encryptor:
+  # 是否开启加密
+  enable: ${ZBM_FIELD_ENCRYPT_ENABLED:false}
+  # 默认加密算法
+  algorithm: ${ZBM_FIELD_ENCRYPT_ALGORITHM:AES}
+  # 编码方式 BASE64/HEX。默认BASE64
+  encode: BASE64
+  # 安全秘钥 对称算法的秘钥 如：AES，SM4
+  password: ${ZBM_CUSTOMER_FIELD_ENCRYPT_KEY:}
+  # 公私钥 非对称算法的公私钥 如：SM2，RSA
+  publicKey:
+  privateKey:
+
+# Customer 敏感数据安全。两把密钥只能由环境变量或外部配置注入。
+property.customer.security:
+  enabled: ${ZBM_CUSTOMER_SECURITY_ENABLED:false}
+  hmac-key-base64: ${ZBM_CUSTOMER_IDENTITY_HMAC_KEY:}
+  key-version: ${ZBM_CUSTOMER_PII_KEY_VERSION:}

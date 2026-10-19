@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.warehouse.inventory.mapper.InventoryMapper">
+
+    <sql id="inventoryColumns">
+        i.id, w.company_id, d.dept_name AS company_name,
+        i.warehouse_id, w.warehouse_name, l.zone_id, z.zone_name,
+        i.location_id, l.location_code, l.location_name,
+        i.material_id, m.material_code, m.material_name, m.specification, m.model,
+        m.category_id, c.category_name, m.base_unit_id, u.unit_name AS base_unit_name, u.symbol AS base_unit_symbol,
+        i.quantity, i.locked_quantity, (i.quantity - i.locked_quantity) AS available_quantity,
+        m.safety_stock, i.version
+    </sql>
+
+    <sql id="inventoryFrom">
+        FROM wm_inventory i
+        INNER JOIN wm_warehouse w ON w.id = i.warehouse_id AND w.del_flag = '0'
+        INNER JOIN wm_warehouse_location l ON l.id = i.location_id AND l.del_flag = '0'
+        INNER JOIN wm_warehouse_zone z ON z.id = l.zone_id AND z.del_flag = '0'
+        INNER JOIN wm_material m ON m.id = i.material_id AND m.del_flag = '0'
+        INNER JOIN wm_material_category c ON c.id = m.category_id AND c.del_flag = '0'
+        INNER JOIN wm_unit u ON u.id = m.base_unit_id AND u.del_flag = '0'
+        LEFT JOIN sys_dept d ON d.dept_id = w.company_id AND d.del_flag = '0'
+    </sql>
+
+    <sql id="inventoryWhere">
+        WHERE i.warehouse_id IN
+        <foreach collection="warehouseIds" item="warehouseId" open="(" separator="," close=")">#{warehouseId}</foreach>
+        <if test="bo.companyId != null">AND w.company_id = #{bo.companyId}</if>
+        <if test="bo.warehouseId != null">AND i.warehouse_id = #{bo.warehouseId}</if>
+        <if test="bo.zoneId != null">AND l.zone_id = #{bo.zoneId}</if>
+        <if test="bo.locationId != null">AND i.location_id = #{bo.locationId}</if>
+        <if test="bo.materialCode != null and bo.materialCode != ''">AND m.material_code LIKE CONCAT('%', #{bo.materialCode}, '%')</if>
+        <if test="bo.materialName != null and bo.materialName != ''">AND m.material_name LIKE CONCAT('%', #{bo.materialName}, '%')</if>
+        <if test="bo.categoryId != null">AND m.category_id = #{bo.categoryId}</if>
+        <if test="bo.zeroStock != null and bo.zeroStock">AND i.quantity = 0</if>
+        <if test="bo.zeroStock != null and !bo.zeroStock">AND i.quantity &gt; 0</if>
+    </sql>
+
+    <select id="selectInventoryPage" resultType="org.dromara.warehouse.inventory.domain.vo.InventoryVo">
+        SELECT <include refid="inventoryColumns"/>
+        <include refid="inventoryFrom"/>
+        <include refid="inventoryWhere"/>
+        ORDER BY w.warehouse_name, l.location_code, m.material_code, i.id
+    </select>
+
+    <select id="selectInventoryList" resultType="org.dromara.warehouse.inventory.domain.vo.InventoryVo">
+        SELECT <include refid="inventoryColumns"/>
+        <include refid="inventoryFrom"/>
+        <include refid="inventoryWhere"/>
+        ORDER BY w.warehouse_name, l.location_code, m.material_code, i.id
+    </select>
+
+    <select id="selectSummaryPage" resultType="org.dromara.warehouse.inventory.domain.vo.InventorySummaryVo">
+        SELECT w.company_id, d.dept_name AS company_name, i.warehouse_id, w.warehouse_name,
+               i.material_id, m.material_code, m.material_name, m.specification, m.model,
+               m.category_id, c.category_name, u.unit_name AS base_unit_name, u.symbol AS base_unit_symbol,
+               SUM(i.quantity) AS quantity, SUM(i.locked_quantity) AS locked_quantity,
+               SUM(i.quantity) - SUM(i.locked_quantity) AS available_quantity, m.safety_stock,
+               CASE WHEN m.safety_stock &gt; 0
+                         AND SUM(i.quantity) - SUM(i.locked_quantity) &lt; m.safety_stock
+                    THEN TRUE ELSE FALSE END AS low_stock
+        <include refid="inventoryFrom"/>
+        <include refid="inventoryWhere"/>
+        GROUP BY w.company_id, d.dept_name, i.warehouse_id, w.warehouse_name,
+                 i.material_id, m.material_code, m.material_name, m.specification, m.model,
+                 m.category_id, c.category_name, u.unit_name, u.symbol, m.safety_stock
+        <if test="bo.lowStock != null and bo.lowStock">
+            HAVING m.safety_stock &gt; 0
+               AND SUM(i.quantity) - SUM(i.locked_quantity) &lt; m.safety_stock
+        </if>
+        ORDER BY w.warehouse_name, m.material_code, i.material_id
+    </select>
+</mapper>

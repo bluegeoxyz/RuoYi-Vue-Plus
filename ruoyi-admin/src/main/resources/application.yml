@@ -1,7 +1,7 @@
 # 开发环境配置
 server:
   # 服务器的HTTP端口，默认为8080
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     # 应用的访问路径
     context-path: /
@@ -45,6 +45,15 @@ user:
 spring:
   application:
     name: RuoYi-Vue-Plus
+  flyway:
+    # Existing non-empty databases (including zbm-data) remain unmanaged by default.
+    # New empty databases must explicitly set ZBM_FLYWAY_ENABLED=true.
+    enabled: ${ZBM_FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    baseline-on-migrate: false
+    clean-disabled: true
+    fail-on-missing-locations: true
   threads:
     # 开启虚拟线程 仅jdk21可用
     virtual:
@@ -105,11 +114,10 @@ security:
     - /**/*.js
     - /favicon.ico
     - /error
+    # Docker/Kubernetes 存活检查仅放行精确健康端点，其他 actuator 端点仍受保护
+    - /actuator/health
     - /*/api-docs
     - /*/api-docs/**
-    - /warm-flow-ui/config
-    - /snail-chat/**
-    - /api/snail/chat/**
 
 # MyBatisPlus配置
 # https://baomidou.com/config/
@@ -132,16 +140,22 @@ mybatis-plus:
 # 数据加密
 mybatis-encryptor:
   # 是否开启加密
-  enable: false
+  enable: ${ZBM_FIELD_ENCRYPT_ENABLED:false}
   # 默认加密算法
-  algorithm: BASE64
+  algorithm: ${ZBM_FIELD_ENCRYPT_ALGORITHM:AES}
   # 编码方式 BASE64/HEX。默认BASE64
   encode: BASE64
   # 安全秘钥 对称算法的秘钥 如：AES，SM4
-  password:
+  password: ${ZBM_CUSTOMER_FIELD_ENCRYPT_KEY:}
   # 公私钥 非对称算法的公私钥 如：SM2，RSA
   publicKey:
   privateKey:
+
+# Customer 敏感数据安全。两把密钥只能由环境变量或外部配置注入。
+property.customer.security:
+  enabled: ${ZBM_CUSTOMER_SECURITY_ENABLED:false}
+  hmac-key-base64: ${ZBM_CUSTOMER_IDENTITY_HMAC_KEY:}
+  key-version: ${ZBM_CUSTOMER_PII_KEY_VERSION:}
 
 # api接口加密
 api-decrypt:
@@ -174,16 +188,10 @@ springdoc:
       url: https://gitee.com/dromara/RuoYi-Vue-Plus
   #这里定义了两个分组，可定义多个，也可以不定义
   group-configs:
-    - group: 1.演示模块
-      packages-to-scan: org.dromara.demo
-    - group: 2.通用模块
+    - group: 1.通用模块
       packages-to-scan: org.dromara.web
-    - group: 3.系统模块
+    - group: 2.系统模块
       packages-to-scan: org.dromara.system
-    - group: 4.代码生成模块
-      packages-to-scan: org.dromara.gen
-    - group: 5.工作流模块
-      packages-to-scan: org.dromara.workflow
 
 # 防止XSS攻击
 xss:
@@ -192,7 +200,6 @@ xss:
   # 排除链接
   excludeUrls:
     - /system/notice
-    - /warm-flow/save-json
 
 --- # 分布式锁 lock4j 全局配置
 lock4j:
@@ -206,10 +213,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: '*'
+        include: health
   endpoint:
     health:
-      show-details: ALWAYS
+      show-details: NEVER
     logfile:
       external-file: ./logs/sys-console.log
 
@@ -230,31 +237,6 @@ message:
   web-socket-send-time-limit: 10000
   # WebSocket 发送缓冲区大小
   web-socket-buffer-size-limit: 64000
-
---- # warm-flow工作流配置
-warm-flow:
-  # 是否开启工作流，默认true
-  enabled: true
-  # 是否开启设计器ui
-  ui: true
-  # 是否显示流程图顶部文字
-  top-text-show: true
-  # 是否渲染节点悬浮提示，默认true
-  node-tooltip: true
-  # 默认Authorization，如果有多个token，用逗号分隔
-  token-name: ${sa-token.token-name},clientid
-
---- # LiteFlow 业务规则编排
-liteflow:
-  # 跟随工作流模块开关，避免禁用工作流时仍加载任务办理链
-  enable: ${warm-flow.enabled:true}
-  metrics:
-    # 指标自动配置使用独立开关，需同步关闭以避免初始化未启用的 LiteFlow
-    enabled: ${liteflow.enable:true}
-  # 工作流模块用于编排任务办理链路
-  rule-source: classpath:liteflow/*.el.xml
-  # 开启虚拟线程
-  enable-virtual-thread: true
 
 --- # mqtt 配置
 # 具体配置还需查看文档
@@ -341,44 +323,3 @@ easy-es:
       enable-track-total-hits: true
       # 数据刷新策略,默认为不刷新
       refresh-policy: immediate
-
---- # MCP 服务端配置
-spring.ai.mcp:
-  server:
-    # 与 ruoyi-admin 共用端口，默认端点为 /mcp
-    enabled: true
-    protocol: STREAMABLE
-    name: ${spring.application.name}
-    version: ${project.version}
-    type: SYNC
-    annotation-scanner:
-      enabled: true
-    streamable-http:
-      mcp-endpoint: /mcp
-
---- # MCP 客户端配置
-spring.ai.mcp:
-  client:
-    # 需要接入外部 MCP Server 时再打开，并配置 streamable-http/stdio connections
-    enabled: false
-    name: ${spring.application.name}-mcp-client
-    version: ${project.version}
-    type: SYNC
-    toolcallback:
-      enabled: false
-    # Streamable HTTP 多服务端示例
-    streamable-http:
-      connections:
-        knowledge:
-          url: http://localhost:9001
-        crm:
-          url: http://localhost:9002
-    # STDIO 多服务端示例
-    stdio:
-      connections:
-        filesystem:
-          command: npx
-          args:
-            - -y
-            - '@modelcontextprotocol/server-filesystem'
-            - D:/data

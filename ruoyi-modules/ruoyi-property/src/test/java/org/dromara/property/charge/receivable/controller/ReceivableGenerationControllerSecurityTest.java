@@ -1,0 +1,3 @@
+package org.dromara.property.charge.receivable.controller;
+import cn.dev33.satoken.annotation.SaCheckPermission; import org.junit.jupiter.api.Test; import static org.junit.jupiter.api.Assertions.*;
+class ReceivableGenerationControllerSecurityTest { @Test void generationEndpointRequiresDedicatedPermission() throws Exception {SaCheckPermission permission=ReceivableGenerationController.class.getMethod("generate",org.dromara.property.charge.receivable.domain.bo.ReceivableGenerateBo.class).getAnnotation(SaCheckPermission.class);assertNotNull(permission);assertArrayEquals(new String[]{"property:receivable:generate"},permission.value());} }

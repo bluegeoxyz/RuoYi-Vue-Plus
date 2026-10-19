@@ -22,7 +22,6 @@
         <!-- Spring 生态依赖版本 -->
         <spring-boot.version>4.1.1</spring-boot.version>
         <spring-boot-admin.version>4.1.2</spring-boot-admin.version>
-        <spring-ai.version>2.0.1</spring-ai.version>
         <springdoc.version>3.1.1</springdoc.version>
 
         <!-- 数据访问与持久化相关依赖版本 -->
@@ -42,8 +41,6 @@
         <!-- 缓存、锁与任务调度相关依赖版本 -->
         <redisson.version>4.7.0</redisson.version>
         <lock4j.version>2.2.7</lock4j.version>
-        <snailjob.version>2.0.2</snailjob.version>
-        <snailai.version>1.1.1</snailai.version>
 
         <!-- 通用工具、编译增强与代码生成相关依赖版本 -->
         <hutool.version>5.8.47</hutool.version>
@@ -61,9 +58,6 @@
         <aws.sdk.version>2.55.4</aws.sdk.version>
         <!-- SMS 配置 -->
         <sms4j.version>3.3.5</sms4j.version>
-        <!-- 工作流配置 -->
-        <warm-flow.version>1.8.9</warm-flow.version>
-        <liteflow.version>2.16.2.1</liteflow.version>
         <!-- mqtt客户端 -->
         <mica-mqtt.version>2.6.12</mica-mqtt.version>
 
@@ -137,13 +131,6 @@
             </dependency>
 
             <!-- Spring AI MCP 依赖配置 -->
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
 
             <!-- hutool 的依赖配置-->
             <dependency>
@@ -301,46 +288,6 @@
                 <version>${fory.version}</version>
             </dependency>
 
-            <!-- SnailJob Client -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-job-client-starter</artifactId>
-                <version>${snailjob.version}</version>
-            </dependency>
-            <!-- SnailJob 重试核心 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-job-client-retry-core</artifactId>
-                <version>${snailjob.version}</version>
-            </dependency>
-            <!-- SnailJob 任务核心 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-job-client-job-core</artifactId>
-                <version>${snailjob.version}</version>
-            </dependency>
-
-            <!-- Snail AI Agent 聊天室 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-ai-agent-chat-starter</artifactId>
-                <version>${snailai.version}</version>
-            </dependency>
-
-            <!-- Snail AI Agent 执行器 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-ai-agent-executor-starter</artifactId>
-                <version>${snailai.version}</version>
-            </dependency>
-
-            <!-- Snail AI OpenAPI 启动器 -->
-            <dependency>
-                <groupId>com.aizuda</groupId>
-                <artifactId>snail-ai-openapi-starter</artifactId>
-                <version>${snailai.version}</version>
-            </dependency>
-
             <!-- 加密包引入 -->
             <dependency>
                 <groupId>org.bouncycastle</groupId>
@@ -353,26 +300,6 @@
                 <groupId>io.github.linpeilie</groupId>
                 <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
                 <version>${mapstruct-plus.version}</version>
-            </dependency>
-
-            <!-- Warm-Flow国产工作流引擎, 在线文档：http://warm-flow.cn/ -->
-            <dependency>
-                <groupId>org.dromara.warm</groupId>
-                <artifactId>warm-flow-mybatis-plus-sb4-starter</artifactId>
-                <version>${warm-flow.version}</version>
-            </dependency>
-            <!-- Warm-Flow UI 插件 -->
-            <dependency>
-                <groupId>org.dromara.warm</groupId>
-                <artifactId>warm-flow-plugin-ui-sb-web</artifactId>
-                <version>${warm-flow.version}</version>
-            </dependency>
-
-            <!-- LiteFlow 规则编排引擎 -->
-            <dependency>
-                <groupId>com.yomahub</groupId>
-                <artifactId>liteflow-spring-boot-starter</artifactId>
-                <version>${liteflow.version}</version>
             </dependency>
 
             <!-- mqtt客户端 -->
@@ -424,17 +351,24 @@
                 <version>${revision}</version>
             </dependency>
 
-            <!-- 调度任务模块 -->
+            <!-- HR业务模块 -->
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-job</artifactId>
+                <artifactId>ruoyi-hr</artifactId>
                 <version>${revision}</version>
             </dependency>
 
-            <!-- AI业务模块 -->
+            <!-- 物业业务模块 -->
             <dependency>
                 <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-ai</artifactId>
+                <artifactId>ruoyi-property</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- 仓库业务模块 -->
+            <dependency>
+                <groupId>org.dromara</groupId>
+                <artifactId>ruoyi-warehouse</artifactId>
                 <version>${revision}</version>
             </dependency>
 
@@ -442,20 +376,6 @@
             <dependency>
                 <groupId>org.dromara</groupId>
                 <artifactId>ruoyi-gen</artifactId>
-                <version>${revision}</version>
-            </dependency>
-
-            <!-- demo模块 -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-demo</artifactId>
-                <version>${revision}</version>
-            </dependency>
-
-            <!--  工作流模块  -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-workflow</artifactId>
                 <version>${revision}</version>
             </dependency>
 
@@ -530,7 +450,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>-Dfile.encoding=UTF-8</argLine>
+                    <argLine>-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8</argLine>
                     <!--
                     暂不启用 groups 标签筛选，确保各模块新增的无标签单元测试默认执行。
                     需要按环境筛选 @Tag 时，可恢复下方配置并通过 -Dgroups=dev 等参数指定标签。

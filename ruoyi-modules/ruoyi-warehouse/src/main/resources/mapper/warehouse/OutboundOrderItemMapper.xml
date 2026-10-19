@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.warehouse.outbound.mapper.OutboundOrderItemMapper">
+ <select id="selectItems" resultType="org.dromara.warehouse.outbound.domain.vo.OutboundOrderItemVo">
+ SELECT i.id,i.material_id,m.material_code,m.material_name,m.specification,i.location_id,z.zone_name,l.location_code,l.location_name,i.unit_id,u.unit_name,u.precision_scale,i.quantity,i.remark,v.quantity inventory_quantity,v.locked_quantity,(v.quantity-v.locked_quantity) available_quantity
+ FROM wm_outbound_order_item i LEFT JOIN wm_material m ON m.id=i.material_id LEFT JOIN wm_warehouse_location l ON l.id=i.location_id LEFT JOIN wm_warehouse_zone z ON z.id=l.zone_id LEFT JOIN wm_unit u ON u.id=i.unit_id LEFT JOIN wm_outbound_order o ON o.id=i.outbound_order_id LEFT JOIN wm_inventory v ON v.warehouse_id=o.warehouse_id AND v.location_id=i.location_id AND v.material_id=i.material_id WHERE i.outbound_order_id=#{orderId} ORDER BY i.id
+ </select>
+</mapper>

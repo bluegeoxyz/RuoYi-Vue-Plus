@@ -1,0 +1,9 @@
+package org.dromara.property.resident.controller;
+import cn.dev33.satoken.annotation.SaCheckPermission; import jakarta.servlet.http.HttpServletResponse; import jakarta.validation.Valid; import jakarta.validation.constraints.NotNull; import lombok.RequiredArgsConstructor; import org.dromara.common.core.domain.*; import org.dromara.common.excel.utils.ExcelBuilder; import org.dromara.common.log.annotation.Log; import org.dromara.common.log.enums.BusinessType; import org.dromara.common.mybatis.core.page.PageQuery; import org.dromara.common.web.core.BaseController; import org.dromara.property.resident.domain.bo.ResidentQueryBo; import org.dromara.property.resident.domain.vo.*; import org.dromara.property.resident.service.IResidentService; import org.springframework.validation.annotation.Validated; import org.springframework.web.bind.annotation.*;
+/** 当前项目 Owner / Resident 查询视图。 */
+@Validated @RestController @RequiredArgsConstructor @RequestMapping("/property/resident") public class ResidentController extends BaseController {
+ private final IResidentService residentService;
+ @SaCheckPermission("property:resident:list") @GetMapping("/list") public R<PageResult<ResidentRelationVo>> list(@Valid ResidentQueryBo bo,PageQuery pq){return R.ok(residentService.queryPage(bo,pq));}
+ @SaCheckPermission("property:resident:query") @GetMapping("/{customerId}") public R<ResidentDetailVo> detail(@NotNull @PathVariable Long customerId,@RequestParam(required=false) Long projectId){return R.ok(residentService.queryDetail(customerId,projectId));}
+ @SaCheckPermission("property:resident:export") @Log(title="项目住户脱敏导出",businessType=BusinessType.EXPORT) @PostMapping("/export") public void export(@Valid ResidentQueryBo bo,HttpServletResponse response){ExcelBuilder.of(residentService.queryExport(bo),ResidentExportVo.class).sheetName("项目住户").toResponse(response);}
+}

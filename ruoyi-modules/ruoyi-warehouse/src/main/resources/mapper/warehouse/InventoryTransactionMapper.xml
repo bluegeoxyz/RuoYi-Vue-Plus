@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.warehouse.inventory.transaction.mapper.InventoryTransactionMapper">
+    <sql id="columns">
+        t.id, t.transaction_no, t.transaction_type, t.company_id, d.dept_name AS company_name, t.project_id,
+        t.warehouse_id, w.warehouse_name, l.zone_id, z.zone_name, t.location_id, l.location_code, l.location_name,
+        t.material_id, m.material_code, m.material_name, m.specification,
+        u.unit_name AS base_unit_name, u.symbol AS base_unit_symbol,
+        t.quantity_before, t.quantity_change, t.quantity_after,
+        t.locked_before, t.locked_change, t.locked_after,
+        t.source_type, t.source_id, t.source_no, t.occurred_at, t.operator_id, su.nick_name AS operator_name, t.remark
+    </sql>
+    <sql id="fromTables">
+        FROM wm_inventory_transaction t
+        LEFT JOIN wm_warehouse w ON w.id = t.warehouse_id
+        LEFT JOIN wm_warehouse_location l ON l.id = t.location_id
+        LEFT JOIN wm_warehouse_zone z ON z.id = l.zone_id
+        LEFT JOIN wm_material m ON m.id = t.material_id
+        LEFT JOIN wm_unit u ON u.id = m.base_unit_id
+        LEFT JOIN sys_dept d ON d.dept_id = t.company_id
+        LEFT JOIN sys_user su ON su.user_id = t.operator_id
+    </sql>
+    <sql id="whereConditions">
+        WHERE t.warehouse_id IN
+        <foreach collection="warehouseIds" item="warehouseId" open="(" separator="," close=")">#{warehouseId}</foreach>
+        <if test="bo.companyId != null">AND t.company_id = #{bo.companyId}</if>
+        <if test="bo.warehouseId != null">AND t.warehouse_id = #{bo.warehouseId}</if>
+        <if test="bo.zoneId != null">AND l.zone_id = #{bo.zoneId}</if>
+        <if test="bo.locationId != null">AND t.location_id = #{bo.locationId}</if>
+        <if test="bo.materialCode != null and bo.materialCode != ''">AND m.material_code LIKE CONCAT('%', #{bo.materialCode}, '%')</if>
+        <if test="bo.materialName != null and bo.materialName != ''">AND m.material_name LIKE CONCAT('%', #{bo.materialName}, '%')</if>
+        <if test="bo.transactionType != null and bo.transactionType != ''">AND t.transaction_type = #{bo.transactionType}</if>
+        <if test="bo.sourceType != null and bo.sourceType != ''">AND t.source_type = #{bo.sourceType}</if>
+        <if test="bo.sourceNo != null and bo.sourceNo != ''">AND t.source_no LIKE CONCAT('%', #{bo.sourceNo}, '%')</if>
+        <if test="bo.beginOccurredAt != null">AND t.occurred_at &gt;= #{bo.beginOccurredAt}</if>
+        <if test="bo.endOccurredAt != null">AND t.occurred_at &lt;= #{bo.endOccurredAt}</if>
+    </sql>
+    <select id="selectTransactionPage" resultType="org.dromara.warehouse.inventory.transaction.domain.vo.InventoryTransactionVo">
+        SELECT <include refid="columns"/><include refid="fromTables"/><include refid="whereConditions"/>
+        ORDER BY t.occurred_at DESC, t.id DESC
+    </select>
+    <select id="selectTransactionList" resultType="org.dromara.warehouse.inventory.transaction.domain.vo.InventoryTransactionVo">
+        SELECT <include refid="columns"/><include refid="fromTables"/><include refid="whereConditions"/>
+        ORDER BY t.occurred_at DESC, t.id DESC
+    </select>
+    <select id="selectTransactionById" resultType="org.dromara.warehouse.inventory.transaction.domain.vo.InventoryTransactionVo">
+        SELECT <include refid="columns"/><include refid="fromTables"/> WHERE t.id = #{id}
+    </select>
+</mapper>

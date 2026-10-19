@@ -77,6 +77,15 @@ public interface ISysUserService {
     SysUserVo selectUserById(Long userId);
 
     /**
+     * 在当前事务中锁定并查询一个有效用户。
+     * 调用前应先通过 {@link #checkUserDataScope(Long)} 校验数据权限。
+     *
+     * @param userId 用户ID
+     * @return 用户信息，不存在或已删除时返回 null
+     */
+    SysUserVo selectUserByIdForUpdate(Long userId);
+
+    /**
      * 通过用户ID串查询用户
      *
      * @param userIds 用户ID串

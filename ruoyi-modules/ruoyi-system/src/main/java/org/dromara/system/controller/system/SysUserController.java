@@ -36,6 +36,7 @@ import org.dromara.system.service.ISysDeptService;
 import org.dromara.system.service.ISysPostService;
 import org.dromara.system.service.ISysRoleService;
 import org.dromara.system.service.ISysUserService;
+import org.dromara.system.service.RoleDelegationGuard;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -59,6 +60,7 @@ public class SysUserController extends BaseController {
     private final ISysRoleService roleService;
     private final ISysPostService postService;
     private final ISysDeptService deptService;
+    private final RoleDelegationGuard roleDelegationGuard;
 
     /**
      * 分页查询用户列表。
@@ -174,6 +176,7 @@ public class SysUserController extends BaseController {
     @RepeatSubmit()
     @PostMapping
     public R<Void> add(@Validated @RequestBody SysUserBo user) {
+        roleDelegationGuard.assertCanDelegateRoles(user.getRoleIds() == null ? List.of() : List.of(user.getRoleIds()));
         deptService.checkDeptDataScope(user.getDeptId());
         if (!userService.checkUserNameUnique(user)) {
             return R.fail("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
@@ -197,6 +200,7 @@ public class SysUserController extends BaseController {
     @RepeatSubmit()
     @PutMapping
     public R<Void> edit(@Validated @RequestBody SysUserBo user) {
+        roleDelegationGuard.assertCanDelegateRoles(user.getRoleIds() == null ? List.of() : List.of(user.getRoleIds()));
         userService.checkUserAllowed(user.getUserId());
         userService.checkUserDataScope(user.getUserId());
         deptService.checkDeptDataScope(user.getDeptId());
@@ -326,6 +330,7 @@ public class SysUserController extends BaseController {
     @RepeatSubmit()
     @PutMapping("/authRole")
     public R<Void> insertAuthRole(Long userId, Long[] roleIds) {
+        roleDelegationGuard.assertCanDelegateRoles(roleIds == null ? List.of() : List.of(roleIds));
         userService.checkUserDataScope(userId);
         userService.insertUserAuth(userId, roleIds);
         return R.ok();

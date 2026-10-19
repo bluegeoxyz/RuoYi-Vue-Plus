@@ -40,13 +40,6 @@
                 <version>${revision}</version>
             </dependency>
 
-            <!-- 调度模块 -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-job</artifactId>
-                <version>${revision}</version>
-            </dependency>
-
             <!-- 日志记录 -->
             <dependency>
                 <groupId>org.dromara</groupId>
@@ -159,13 +152,6 @@
                 <version>${revision}</version>
             </dependency>
 
-            <!-- liteflow模块 -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-liteflow</artifactId>
-                <version>${revision}</version>
-            </dependency>
-
             <!-- mqtt模块 -->
             <dependency>
                 <groupId>org.dromara</groupId>
@@ -173,19 +159,7 @@
                 <version>${revision}</version>
             </dependency>
 
-            <!-- ai模块 -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-ai</artifactId>
-                <version>${revision}</version>
-            </dependency>
-
             <!-- mcp模块 -->
-            <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-mcp</artifactId>
-                <version>${revision}</version>
-            </dependency>
 
         </dependencies>
     </dependencyManagement>

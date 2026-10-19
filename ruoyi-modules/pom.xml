@@ -16,12 +16,11 @@
     </description>
 
     <modules>
-        <module>ruoyi-demo</module>
         <module>ruoyi-gen</module>
-        <module>ruoyi-job</module>
         <module>ruoyi-system</module>
-        <module>ruoyi-workflow</module>
-        <module>ruoyi-ai</module>
+        <module>ruoyi-hr</module>
+        <module>ruoyi-property</module>
+        <module>ruoyi-warehouse</module>
     </modules>
 
 </project>

@@ -3,7 +3,7 @@ package org.dromara.common.encrypt.core;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
-import lombok.extern.slf4j.Slf4j;
+import org.dromara.common.encrypt.exception.FieldCryptoException;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -13,7 +13,6 @@ import java.util.*;
  *
  * @author Lion Li
  */
-@Slf4j
 public class EncryptedFieldProcessor {
 
     private final EncryptorManager encryptorManager;
@@ -38,14 +37,23 @@ public class EncryptedFieldProcessor {
      */
     public List<FieldSnapshot> encrypt(Object sourceObject) {
         List<FieldSnapshot> snapshots = new ArrayList<>();
-        handle(sourceObject, Collections.newSetFromMap(new IdentityHashMap<>()), (target, field, value) -> {
-            String encrypt = encryptorManager.encrypt(value, contextFactory.create(field));
-            if (!Objects.equals(value, encrypt)) {
-                snapshots.add(new FieldSnapshot(target, field, value));
-                field.set(target, encrypt);
+        try {
+            handle(sourceObject, Collections.newSetFromMap(new IdentityHashMap<>()), (target, field, value) -> {
+                String encrypt = encryptorManager.encrypt(value, contextFactory.create(field));
+                if (!Objects.equals(value, encrypt)) {
+                    snapshots.add(new FieldSnapshot(target, field, value));
+                    field.set(target, encrypt);
+                }
+            });
+            return snapshots;
+        } catch (Exception e) {
+            try {
+                restoreSnapshots(snapshots);
+            } catch (FieldCryptoException restoreException) {
+                e.addSuppressed(restoreException);
             }
-        });
-        return snapshots;
+            throw new FieldCryptoException("字段加密失败，数据库操作已终止", e);
+        }
     }
 
     /**
@@ -54,8 +62,12 @@ public class EncryptedFieldProcessor {
      * @param sourceObject 待解密对象
      */
     public void decrypt(Object sourceObject) {
-        handle(sourceObject, Collections.newSetFromMap(new IdentityHashMap<>()), (target, field, value) ->
-            field.set(target, encryptorManager.decrypt(value, contextFactory.create(field))));
+        try {
+            handle(sourceObject, Collections.newSetFromMap(new IdentityHashMap<>()), (target, field, value) ->
+                field.set(target, encryptorManager.decrypt(value, contextFactory.create(field))));
+        } catch (Exception e) {
+            throw new FieldCryptoException("字段解密失败，查询结果已拒绝返回", e);
+        }
     }
 
     /**
@@ -65,35 +77,53 @@ public class EncryptedFieldProcessor {
      * @param visited      已访问对象集合
      * @param fieldHandler 字段处理回调
      */
-    private void handle(Object sourceObject, Set<Object> visited, FieldHandler fieldHandler) {
+    private void handle(Object sourceObject, Set<Object> visited, FieldHandler fieldHandler) throws IllegalAccessException {
         if (ObjectUtil.isNull(sourceObject) || sourceObject instanceof String || visited.contains(sourceObject)) {
             return;
         }
         visited.add(sourceObject);
         if (sourceObject instanceof Map<?, ?> map) {
-            new HashSet<>(map.values()).forEach(value -> handle(value, visited, fieldHandler));
+            for (Object value : new HashSet<>(map.values())) {
+                handle(value, visited, fieldHandler);
+            }
             return;
         }
         if (sourceObject instanceof Collection<?> collection) {
             if (CollUtil.isEmpty(collection)) {
                 return;
             }
-            collection.forEach(item -> handle(item, visited, fieldHandler));
+            for (Object item : collection) {
+                handle(item, visited, fieldHandler);
+            }
             return;
         }
         Set<Field> fields = encryptorManager.getFieldCache(sourceObject.getClass());
         if (CollUtil.isEmpty(fields)) {
             return;
         }
-        try {
-            for (Field field : fields) {
-                String value = Convert.toStr(field.get(sourceObject));
-                if (ObjectUtil.isNotNull(value)) {
-                    fieldHandler.handle(sourceObject, field, value);
+        for (Field field : fields) {
+            String value = Convert.toStr(field.get(sourceObject));
+            if (ObjectUtil.isNotNull(value)) {
+                fieldHandler.handle(sourceObject, field, value);
+            }
+        }
+    }
+
+    private void restoreSnapshots(List<FieldSnapshot> snapshots) {
+        FieldCryptoException failure = null;
+        for (int index = snapshots.size() - 1; index >= 0; index--) {
+            try {
+                snapshots.get(index).restore();
+            } catch (FieldCryptoException e) {
+                if (failure == null) {
+                    failure = e;
+                } else {
+                    failure.addSuppressed(e);
                 }
             }
-        } catch (Exception e) {
-            log.error("处理加密字段时出错", e);
+        }
+        if (failure != null) {
+            throw failure;
         }
     }
 
@@ -126,7 +156,7 @@ public class EncryptedFieldProcessor {
             try {
                 field.set(target, value);
             } catch (IllegalAccessException e) {
-                log.error("恢复加密字段时出错", e);
+                throw new FieldCryptoException("加密参数恢复失败", e);
             }
         }
     }
